@@ -2,7 +2,7 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { Enquiry } from "../models/Enquiry.js";
 import { requireAdmin } from "../middleware/auth.js";
-import { toJSON } from "../db.js";
+import { toJSON, isValidId } from "../db.js";
 
 const router = Router();
 
@@ -53,6 +53,10 @@ router.get("/admin", requireAdmin, async (req, res) => {
 });
 
 router.patch("/admin/:id", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
   const update = {};
   if (req.body?.handled !== undefined) update.handled = !!req.body.handled;
   if (req.body?.note !== undefined) update.note = String(req.body.note).slice(0, 1000);
@@ -63,6 +67,10 @@ router.patch("/admin/:id", requireAdmin, async (req, res) => {
 });
 
 router.delete("/admin/:id", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
   const enquiry = await Enquiry.findByIdAndDelete(req.params.id);
   if (!enquiry) return res.status(404).json({ error: "Enquiry not found" });
   res.json({ ok: true });

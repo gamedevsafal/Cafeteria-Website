@@ -15,7 +15,7 @@ const ALLOWED_KEYS = [
 
 /** Public: everything the website needs to render itself. Cached briefly. */
 router.get("/", async (req, res) => {
-  res.set("Cache-Control", "public, max-age=60");
+  res.set("Cache-Control", "no-store");
   const s = await Setting.findOne({ key: "site" }).lean();
   if (!s) return res.status(503).json({ error: "Site is not configured yet" });
   const { _id, __v, key, createdAt, updatedAt, ...rest } = s;

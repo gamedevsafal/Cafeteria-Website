@@ -4,9 +4,9 @@ import { api, rupees } from "../api.js";
 import { Loading } from "../components/DishCard.jsx";
 
 const MEAL_META = {
-  breakfast: { label: "Breakfast", icon: "sun", note: "Served 7:00 - 11:00" },
-  lunch: { label: "Lunch", icon: "plate", note: "Served 11:00 - 4:00" },
-  dinner: { label: "Dinner", icon: "moon", note: "Served 7:00 - 11:00" }
+  breakfast: { label: "Breakfast", icon: "sun", note: "Served 8:30 - 10:30" },
+  lunch: { label: "Lunch", icon: "plate", note: "Served 12:00 - 2:00" },
+  dinner: { label: "Dinner", icon: "moon", note: "Served 7:00 - 9:00" }
 };
 
 function Icon({ name }) {
@@ -22,32 +22,42 @@ function Icon({ name }) {
   );
 }
 
-function Thali({ title, meta, price, items, extras = [], note }) {
+function Thali({ title, meta, price, items, extras = [], note, closed = false }) {
   return (
-    <article className="thali">
+    <article className={"thali" + (closed ? " is-closed" : "")}>
       <header className="thali-head">
         <span className="thali-icon"><Icon name={meta.icon} /></span>
         <div>
           <h3>{title}</h3>
-          <span className="thali-note">{meta.note}</span>
+          <span className="thali-note">{closed ? "Not served today" : meta.note}</span>
         </div>
-        {price > 0 && <span className="thali-price">{rupees(price)}</span>}
+        {closed ? (
+          <span className="thali-price is-closed">Closed</span>
+        ) : (
+          price > 0 && <span className="thali-price">{rupees(price)}</span>
+        )}
       </header>
 
-      <ul className="thali-items">
-        {items.map((i, n) => (
-          <li key={n}>
-            <span className="thali-dot" />
-            {i}
-          </li>
-        ))}
-        {extras.filter(Boolean).map((x, n) => (
-          <li key={"x" + n} className="is-extra">
-            <span className="thali-dot" />
-            {x}
-          </li>
-        ))}
-      </ul>
+      {closed ? (
+        <p className="thali-closed-note">
+          We do not serve {title.toLowerCase()} today. Please call the mess if you need food
+          arranged.
+        </p>
+      ) : (
+        <ul className="thali-items">
+          {items.length ? (
+            items.map((i, n) => <li key={n}><span className="thali-dot" />{i}</li>)
+          ) : (
+            <li><span className="thali-dot" />Not set for today</li>
+          )}
+          {extras.filter(Boolean).map((x, n) => (
+            <li key={"x" + n} className="is-extra">
+              <span className="thali-dot" />
+              {x}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {note && <p className="thali-today-note">{note}</p>}
     </article>
@@ -79,6 +89,10 @@ export default function Today() {
 
   const m = today.menu;
 
+  /* A meal can be closed for the day (Sunday dinner) without the kitchen
+     being shut. Only a whole-day closure hides the whole page. */
+  const wholeDayClosed = !!m?.closed;
+
   const lunchItems = m
     ? [m.lunchSabji?.name, m.lunchDal?.name, m.lunchDrySabji?.name].filter(Boolean)
     : [];
@@ -94,6 +108,18 @@ export default function Today() {
       ]
     : [];
 
+  /* breakfast, lunch and dinner, each flagged if it is off today */
+  const meals = [
+    { id: "breakfast", label: "Breakfast", window: "Served 8:30 - 10:30", price: m?.priceBreakfast,
+      items: m?.breakfast?.name ? [m.breakfast.name] : [], closed: !!m?.breakfastClosed },
+    { id: "lunch", label: "Lunch", window: "Served 12:00 - 2:00", price: m?.priceLunch,
+      items: lunchItems, closed: false },
+    { id: "dinner", label: "Dinner", window: "Served 7:00 - 9:00", price: m?.priceDinner,
+      items: dinnerItems, closed: !!m?.dinnerClosed }
+  ];
+
+  const anyOpen = meals.some((x) => !x.closed && x.items.length);
+
   return (
     <>
       <section className="page-hero">
@@ -104,13 +130,24 @@ export default function Today() {
             <span aria-current="page">Today&rsquo;s thali</span>
           </nav>
           <p className="eyebrow">{today.dayName}</p>
-          <h1>{m?.closed ? "Kitchen closed today" : "What’s cooking today"}</h1>
+          <h1>{wholeDayClosed ? "Kitchen closed today" : "What’s cooking today"}</h1>
           <p className="lede">
-            {m?.closed
+            {wholeDayClosed
               ? "We are not serving today. Please check back tomorrow or call either mess."
               : "Freshly made every morning. The same thali is served at both messes, and it can be delivered inside Gwalior."}
           </p>
-          {today.isOverride && !m?.closed && (
+          {!wholeDayClosed && meals.some((x) => x.closed) && (
+            <p className="open-note is-closed">
+              {meals
+                .filter((x) => x.closed)
+                .map((x) => x.label)
+                .join(" and ")}{" "}
+              {meals.filter((x) => x.closed).length === 1 ? "is" : "are"} closed today. The
+              other {meals.filter((x) => !x.closed).length === 1 ? "meal is" : "meals are"}{" "}
+              served as usual.
+            </p>
+          )}
+          {today.isOverride && !wholeDayClosed && (
             <p className="open-note is-open">Special menu for today. Different from the usual weekly plan.</p>
           )}
         </div>
@@ -118,7 +155,7 @@ export default function Today() {
 
       <section className="section-sm">
         <div className="container">
-          {m?.closed || (m?.dinnerClosed && today.dayName === "Sunday") ? (
+          {wholeDayClosed ? (
             <div className="card center">
               <h2>Closed today</h2>
               <p className="card-text">Please come back tomorrow, or call either mess and we will sort you out.</p>
@@ -126,27 +163,25 @@ export default function Today() {
           ) : (
             <>
               <div className="thali-grid">
-                <Thali
-                  title={MEAL_META.breakfast.label}
-                  meta={MEAL_META.breakfast}
-                  price={m?.priceBreakfast}
-                  items={m?.breakfast?.name ? [m.breakfast.name] : ["Not set for today"]}
-                />
-                <Thali
-                  title={MEAL_META.lunch.label}
-                  meta={MEAL_META.lunch}
-                  price={m?.priceLunch}
-                  items={lunchItems.length ? lunchItems : ["Not set for today"]}
-                  extras={extras}
-                />
-                <Thali
-                  title={MEAL_META.dinner.label}
-                  meta={MEAL_META.dinner}
-                  price={m?.priceDinner}
-                  items={dinnerItems.length ? dinnerItems : ["Not set for today"]}
-                  extras={extras}
-                />
+                {meals.map((meal) => (
+                  <Thali
+                    key={meal.id}
+                    title={meal.label}
+                    meta={MEAL_META[meal.id]}
+                    price={meal.closed ? 0 : meal.price}
+                    items={meal.closed ? [] : meal.items}
+                    extras={meal.closed ? [] : meal.id === "breakfast" ? [] : extras}
+                    closed={meal.closed}
+                  />
+                ))}
               </div>
+
+              {!anyOpen && (
+                <div className="alert alert-warn" style={{ marginTop: 22 }}>
+                  Nothing has been set for today yet. Please call either mess and we will tell
+                  you what is cooking.
+                </div>
+              )}
 
               {m?.note && (
                 <div className="alert alert-warn" style={{ marginTop: 22 }}>

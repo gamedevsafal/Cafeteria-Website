@@ -2,7 +2,7 @@ import { Router } from "express";
 import { MenuItem } from "../models/MenuItem.js";
 import { Setting } from "../models/Setting.js";
 import { requireAdmin } from "../middleware/auth.js";
-import { toJSON } from "../db.js";
+import { toJSON, isValidId } from "../db.js";
 
 const router = Router();
 
@@ -113,6 +113,10 @@ router.put("/admin/mess/:mess", requireAdmin, async (req, res) => {
 });
 
 router.patch("/admin/:id/available", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
   const updated = await MenuItem.findByIdAndUpdate(
     req.params.id,
     { available: !!req.body?.available },
@@ -123,6 +127,10 @@ router.patch("/admin/:id/available", requireAdmin, async (req, res) => {
 });
 
 router.delete("/admin/:id", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
   const deleted = await MenuItem.findByIdAndDelete(req.params.id);
   if (!deleted) return res.status(404).json({ error: "Item not found" });
   res.json({ ok: true, id: req.params.id });

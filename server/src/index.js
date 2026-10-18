@@ -25,6 +25,14 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const WEB_DIST = path.join(ROOT, "web", "dist");
 const ADMIN_DIST = path.join(ROOT, "admin", "dist");
 
+/* A single bad request must never take the whole site down. */
+process.on("unhandledRejection", (err) => {
+  console.error("unhandled rejection:", err?.message || err);
+});
+process.on("uncaughtException", (err) => {
+  console.error("uncaught exception:", err?.message || err);
+});
+
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
 

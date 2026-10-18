@@ -1496,3 +1496,34 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 .meal-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .meal-chips .chip { font-weight: 600; }
 .plan-row.on { background: #fdf6f2; border-radius: var(--radius-s); }
+
+.thali.is-closed {
+  background: var(--cream-deep);
+  border-style: dashed;
+  border-color: #d8cbb8;
+}
+.thali.is-closed .thali-icon { color: var(--ink-faint); background: #e5dccd; }
+.thali.is-closed h3 { color: var(--ink-faint); }
+.thali-price.is-closed {
+  font-size: .8rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.thali-closed-note {
+  margin: 0; font-size: .88rem; color: var(--ink-faint); line-height: 1.5;
+}
+
+/* real thali photo in the hero */
+.plate { overflow: hidden; }
+.plate-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  transform: scale(1.06);
+  animation: none;
+}
+.plate:has(.plate-photo) {
+  box-shadow: var(--shadow-l);
+  background: var(--paper);
+}

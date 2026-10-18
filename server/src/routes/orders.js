@@ -5,7 +5,7 @@ import { MenuItem } from "../models/MenuItem.js";
 import { MessMenu } from "../models/MessMenu.js";
 import { Setting } from "../models/Setting.js";
 import { requireAdmin } from "../middleware/auth.js";
-import { toJSON } from "../db.js";
+import { toJSON, isValidId } from "../db.js";
 
 const router = Router();
 
@@ -222,7 +222,16 @@ router.post("/", orderLimiter, async (req, res) => {
         return res.status(400).json({ error: `The ${MEAL_LABEL[meal].toLowerCase()} price is not set yet. Please call us.` });
       }
 
-      const qty = Math.floor(Number(b.qty) || people || 1);
+      const rawQty = b.qty !== undefined ? b.qty : b.people;
+      const qty = Math.floor(Number(rawQty));
+
+      if (!Number.isFinite(qty) || qty < 1) {
+        return res.status(400).json({ error: "How many thalis? Enter at least 1." });
+      }
+      if (qty !== Number(rawQty) && Number.isFinite(Number(rawQty))) {
+        return res.status(400).json({ error: "Enter a whole number of thalis." });
+      }
+
       const max = settings.maxMealQtyPerOrder || 20;
       if (qty > max) {
         return res.status(400).json({ error: `Online orders are limited to ${max} thalis. For more, call us.` });
@@ -469,67 +478,6 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
   });
 });
 
-router.get("/admin/:id", requireAdmin, async (req, res) => {
-  const order = await Order.findById(req.params.id);
-  if (!order) return res.status(404).json({ error: "Order not found" });
-  res.json(toJSON(order));
-});
-
-router.patch("/admin/:id/status", requireAdmin, async (req, res) => {
-  const status = String(req.body?.status || "");
-  if (!STATUSES.includes(status)) {
-    return res.status(400).json({ error: "Unknown status" });
-  }
-
-  const order = await Order.findById(req.params.id);
-  if (!order) return res.status(404).json({ error: "Order not found" });
-
-  order.status = status;
-  if (req.body?.statusNote !== undefined) order.statusNote = String(req.body.statusNote).slice(0, 500);
-  order.history.push({ status, by: req.admin.email });
-  await order.save();
-
-  res.json(toJSON(order));
-});
-
-router.patch("/admin/:id", requireAdmin, async (req, res) => {
-  const allowed = ["notes", "statusNote", "slot", "people"];
-  const update = {};
-  allowed.forEach((k) => {
-    if (req.body?.[k] !== undefined) update[k] = req.body[k];
-  });
-  if (!Object.keys(update).length) return res.status(400).json({ error: "Nothing to update" });
-
-  const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
-  if (!order) return res.status(404).json({ error: "Order not found" });
-  res.json(toJSON(order));
-});
-
-/** Stripe hook-in point: mark an order paid from the checkout webhook. */
-router.post("/admin/:id/paid", requireAdmin, async (req, res) => {
-  const order = await Order.findByIdAndUpdate(
-    req.params.id,
-    {
-      payment: {
-        status: "paid",
-        method: req.body?.method || "stripe",
-        stripeSessionId: req.body?.sessionId || "",
-        paidAt: new Date()
-      }
-    },
-    { new: true }
-  );
-  if (!order) return res.status(404).json({ error: "Order not found" });
-  res.json(toJSON(order));
-});
-
-router.delete("/admin/:id", requireAdmin, async (req, res) => {
-  const order = await Order.findByIdAndDelete(req.params.id);
-  if (!order) return res.status(404).json({ error: "Order not found" });
-  res.json({ ok: true, id: req.params.id });
-});
-
-/** CSV of the current order book, for the kitchen printer. */
 router.get("/admin/export.csv", requireAdmin, async (req, res) => {
   const q = {};
   if (req.query.status && req.query.status !== "all") q.status = String(req.query.status);
@@ -542,9 +490,15 @@ router.get("/admin/export.csv", requireAdmin, async (req, res) => {
 
   const orders = await Order.find(q).sort({ slot: 1, createdAt: 1 }).lean();
 
+  /* A leading = + - @ makes Excel treat the cell as a formula. */
+  const csvSafe = (v) => {
+    const str = v === null || v === undefined ? "" : String(v);
+    return /^[=+\-@\\t\\r]/.test(str) ? "'" + str : str;
+  };
+
   const esc = (v) => {
-    const s = v === null || v === undefined ? "" : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    const str = csvSafe(v);
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
   };
 
   const rows = [
@@ -568,3 +522,82 @@ router.get("/admin/export.csv", requireAdmin, async (req, res) => {
 });
 
 export default router;
+router.get("/admin/:id", requireAdmin, async (req, res) => {
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
+  const order = await Order.findById(req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  res.json(toJSON(order));
+});
+
+router.patch("/admin/:id/status", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
+  const status = String(req.body?.status || "");
+  if (!STATUSES.includes(status)) {
+    return res.status(400).json({ error: "Unknown status" });
+  }
+
+  const order = await Order.findById(req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+
+  order.status = status;
+  if (req.body?.statusNote !== undefined) order.statusNote = String(req.body.statusNote).slice(0, 500);
+  order.history.push({ status, by: req.admin.email });
+  await order.save();
+
+  res.json(toJSON(order));
+});
+
+router.patch("/admin/:id", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
+  const allowed = ["notes", "statusNote", "slot", "people"];
+  const update = {};
+  allowed.forEach((k) => {
+    if (req.body?.[k] !== undefined) update[k] = req.body[k];
+  });
+  if (!Object.keys(update).length) return res.status(400).json({ error: "Nothing to update" });
+
+  const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  res.json(toJSON(order));
+});
+
+/** Stripe hook-in point: mark an order paid from the checkout webhook. */
+router.post("/admin/:id/paid", requireAdmin, async (req, res) => {
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
+  const order = await Order.findByIdAndUpdate(
+    req.params.id,
+    {
+      payment: {
+        status: "paid",
+        method: req.body?.method || "stripe",
+        stripeSessionId: req.body?.sessionId || "",
+        paidAt: new Date()
+      }
+    },
+    { new: true }
+  );
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  res.json(toJSON(order));
+});
+
+router.delete("/admin/:id", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
+  const order = await Order.findByIdAndDelete(req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  res.json({ ok: true, id: req.params.id });
+});
+
+/** CSV of the current order book, for the kitchen printer. */

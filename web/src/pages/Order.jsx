@@ -5,9 +5,9 @@ import { api, rupees, MESSES } from "../api.js";
 import { Loading } from "../components/DishCard.jsx";
 
 const MEAL_META = {
-  breakfast: { icon: "sun", window: "Served 7:00 - 10:30" },
-  lunch: { icon: "plate", window: "Served 11:00 - 4:00" },
-  dinner: { icon: "moon", window: "Served 7:00 - 10:30 pm" }
+  breakfast: { icon: "sun", window: "Served 8:30 - 10:30" },
+  lunch: { icon: "plate", window: "Served 12:00 - 2:00" },
+  dinner: { icon: "moon", window: "Served 7:00 - 9:00 pm" }
 };
 
 function Icon({ name }) {

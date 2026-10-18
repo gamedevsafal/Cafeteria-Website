@@ -88,12 +88,14 @@ export default function Home() {
 
           <div className="hero-art" aria-hidden="true">
             <div className="plate">
-              <div className="plate-ring" />
-              <span className="garnish garnish-1" />
-              <span className="garnish garnish-2" />
-              <span className="garnish garnish-3" />
-              <span className="garnish garnish-4" />
-              <span className="garnish garnish-5" />
+              <img
+                className="plate-photo"
+                src="/thali.png"
+                alt=""
+                width="500"
+                height="500"
+                fetchPriority="high"
+              />
             </div>
             <div className="ticket">
               <p className="ticket-head">Today&rsquo;s thali</p>

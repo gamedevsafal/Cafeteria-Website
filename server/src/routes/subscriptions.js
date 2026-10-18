@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import { Subscription } from "../models/Subscription.js";
 import { Setting } from "../models/Setting.js";
 import { requireAdmin } from "../middleware/auth.js";
-import { toJSON } from "../db.js";
+import { toJSON, isValidId } from "../db.js";
 import { MEAL_COMBOS, MEAL_IDS, comboKey, isValidCombo, comboLabel } from "../models/Plans.js";
 
 const router = Router();
@@ -154,6 +154,10 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
 });
 
 router.patch("/admin/:id", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
   const update = {};
   const numeric = ["monthlyAmount", "mealsPerWeek", "paidMonths"];
 
@@ -197,6 +201,10 @@ router.patch("/admin/:id", requireAdmin, async (req, res) => {
 });
 
 router.delete("/admin/:id", requireAdmin, async (req, res) => {
+
+
+
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: "Bad id" });
   const sub = await Subscription.findByIdAndDelete(req.params.id);
   if (!sub) return res.status(404).json({ error: "Membership not found" });
   res.json({ ok: true, id: req.params.id });
@@ -207,9 +215,15 @@ router.get("/admin/export.csv", requireAdmin, async (req, res) => {
   if (req.query.status && req.query.status !== "all") q.status = String(req.query.status);
   const subs = await Subscription.find(q).sort({ createdAt: -1 }).lean();
 
+  /* A leading = + - @ makes Excel treat the cell as a formula. */
+  const csvSafe = (v) => {
+    const str = v === null || v === undefined ? "" : String(v);
+    return /^[=+\-@\\t\\r]/.test(str) ? "'" + str : str;
+  };
+
   const esc = (v) => {
-    const s = v === null || v === undefined ? "" : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    const str = csvSafe(v);
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
   };
 
   const rows = [

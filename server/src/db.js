@@ -26,3 +26,8 @@ export function toJSON(doc) {
   delete o.__v;
   return o;
 }
+
+/** True only for a well formed Mongo ObjectId string. */
+export function isValidId(id) {
+  return typeof id === "string" && /^[0-9a-fA-F]{24}$/.test(id);
+}
