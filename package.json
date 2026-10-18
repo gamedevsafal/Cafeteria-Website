@@ -1,0 +1,19 @@
+{
+  "name": "divya-catering",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Divya Catering - catering website, admin panel and API",
+  "scripts": {
+    "setup": "npm install --prefix server && npm install --prefix web && npm install --prefix admin",
+    "seed": "npm run seed --prefix server",
+    "seed:fresh": "npm run seed:fresh --prefix server",
+    "dev": "node dev.js",
+    "dev:api": "node dev.js --api-only",
+    "build": "npm run build --prefix web && npm run build --prefix admin",
+    "start": "npm start --prefix server"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module"
+}
